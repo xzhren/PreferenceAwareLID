@@ -9,26 +9,26 @@ Implementation for the ACL2022 findings paper "Unsupervised Preference-Aware Lan
 - nltk
 
 ### Benchmark
-- U-LID:  in corpus21_ulid/test_ulid
+- **U-LID:  in corpus21_ulid/test_ulid**
 The "U-LID" is collected from a real-world translation system AliTrans. This benchmark consists of 21 languages and 11,031 samples. The average word count in each sample is 2.08, and the average number with respect to character is 13.27.
 
-- KB-21:  in corpus21_ulid/test_kb21
+- **KB-21:  in corpus21_ulid/test_kb21**
 The "KB-21" is a publicly available test set from Kocmi and Bojar (2017)[1], using a subset of 21 languages. "KB-21" consists of 2,100 samples, the average amounts of words and characters in each sample are 4.47 and 34.90, respectively.
 
-- Instruction
+- **Instruction**
 The "test.ulid" represents the user's language preference, and the format is "language abbreviation: probability value; language abbreviation: probability value". 
 The "test.trg" is the language label with abbreviations. 
 The "test.src" is the user's input text.
 
-- Sample
+- **Sample**
 test.ulid is ar:0.00,de:0.00,en:0.12,es:0.80,fr:0.00,he:0.00,hi:0.00,id:0.01,it:0.04,ja:0.00,ko:0.00,ms:0.00,nl:0.00,pl:0.00,pt:0.03,ru:0.00,th:0.00,tr:0.00,vi:0.00,zh:0.00
 test.trg is pt
 test.src is monitor cardiaco esportivo
-- Meaning
+- **Meaning**
 The language label of text "monitor cardiaco esportivo" is "Portuguese", and the user language preference is "80% Spanish, 12% English, 4% Italian, 3% Portuguese, 1% Indonesian".
 
 
-- Language label and abbreviations:
+- **Language label and abbreviations**
 English (en), Chinese (zh), Russian (ru), Portuguese (pt), Spanish (es), French (fr), German (de), Italian (it), Dutch (nl), Japanese (ja), Korean (ko), Arabic (ar), Thai (th), Hindi (hi), Hebrew (he),  Vietnamese (vi), Turkish (tr),  Polish (pl),  Indonesian (id), Malay (ms), and Ukrainian (uk).
 
 
