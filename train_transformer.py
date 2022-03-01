@@ -2,10 +2,10 @@
 # -*- coding:utf8 -*-
 
 # ================================================================================
-# Copyright 2018 Alibaba Inc. All Rights Reserved.
+# Copyright 2022 Alibaba Inc. All Rights Reserved.
 #
 # History:
-# 2019.07.22. Be created by xingzhang.rxz. Used for language identification in CNN method.
+# 2022.03.01. Be created by xingzhang.rxz. Used for language identification.
 # 2018.04.27. Be created by jiangshi.lxq. Forked and adatped from tensor2tensor.
 # For internal use only. DON'T DISTRIBUTE.
 # ================================================================================

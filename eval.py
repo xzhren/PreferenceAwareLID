@@ -2,11 +2,11 @@
 # -*- coding:utf8 -*-
 
 # ================================================================================
-# Copyright 2018 Alibaba Inc. All Rights Reserved.
+# Copyright 2022 Alibaba Inc. All Rights Reserved.
 #
 # History:
-# 2019.07.22. Be created by xingzhang.rxz. Used for language identification in CNN method.
-# 2018.04.26. Be created by jiangshi.lxq. Forked and adatped from tensor2tensor.
+# 2022.03.01. Be created by xingzhang.rxz. Used for language identification.
+# 2018.04.27. Be created by jiangshi.lxq. Forked and adatped from tensor2tensor.
 # For internal use only. DON'T DISTRIBUTE.
 # ================================================================================
 
@@ -16,18 +16,6 @@ from __future__ import print_function
 
 from config import *
 from transformer import transformer_model_fn as model_fn
-# if args.exp_name.startswith("textcnn"):
-#     from textcnn import textcnn_model_fn as model_fn
-# elif args.exp_name.startswith("transformer"):
-#     from transformer import transformer_model_fn as model_fn
-# elif args.exp_name.startswith("attcnn"):
-#     from selfatt_cnn import transformer_model_fn as model_fn
-# elif "textcnn_att" in args.exp_name:
-#     from textcnn_attention import textcnn_model_fn as model_fn
-# elif "transformer" in args.exp_name or "trans" in args.exp_name:
-#     from transformer import transformer_model_fn as model_fn
-# else:
-#     from textcnn import textcnn_model_fn as model_fn
 from data_reader import input_fn
 import time
 import tensorflow as tf
@@ -36,10 +24,8 @@ import os, errno
 import subprocess
 import re
 from functools import reduce
-tf.logging.set_verbosity(tf.logging.INFO)
 
-#supported_lang=set(["ar","zh","zh-tw","nl","en","fr","de","he","hi","id","it","ja","ko","ms","pl","pt","ru","es","th","tr","ug","uk","vi"])
-#supported_lang=None
+tf.logging.set_verbosity(tf.logging.INFO)
 
 def cal_acc(output_file, dev_src, dev_trg, acc_log, trg_vocab):
     acc_lt = []
@@ -50,13 +36,11 @@ def cal_acc(output_file, dev_src, dev_trg, acc_log, trg_vocab):
         
         with tf.gfile.GFile(dev_src, 'r') as fdevsrc:
             try:
-               #devsrcs = fdevsrc.readlines()
                devsrcs = []
                for i,line in enumerate(fdevsrc):
                  devsrcs.append(line)
             except:
-               print(i,line)
-               1/0
+               print("error:",i,line)
         with tf.gfile.GFile(dev_trg, 'r') as fdevtrg:
             devtrgs = fdevtrg.readlines()
         
@@ -65,10 +49,8 @@ def cal_acc(output_file, dev_src, dev_trg, acc_log, trg_vocab):
         acc_counter_all = [0] * len(trg_vocab)
         for hypothes, src, trg in zip(hypotheses, devsrcs, devtrgs):
             hypothes, src, trg = hypothes.strip(), src.strip(), trg.strip()
-            # src = src.replace(" ", "").replace("\x02", " ").replace("\x08", "")
             if trg not in trg_vocab: continue
             trg_index = trg_vocab.index(trg)
-            if supported_lang and trg not in supported_lang: acc_counter_total -= 1
             acc_counter_total += 1
             acc_counter_all[trg_index] += 1
             print(src+"\t"+trg+"\t"+hypothes, file=fres)
@@ -82,8 +64,7 @@ def cal_acc(output_file, dev_src, dev_trg, acc_log, trg_vocab):
         bleu = '%s' % ('\t'.join(format(x*100, "0.2f") for x in acc_lt))
         print('ACC: %s' % bleu)
         print(bleu, file=f)
-    # return sum(bleu_list) / len(dev_file_list)  # bleu_list[-1]
-    return bleu  # bleu_list[-1]
+    return bleu
 
 
 def get_dict_from_collection(collection_name):
@@ -109,12 +90,9 @@ def extract_batches(tensors):
 class SaveEvaluationPredictionHook(tf.train.SessionRunHook):
   def __init__(self, output_file, dev_src, dev_trg, trg_vocab_file, acc_log):
     self._output_file = output_file
-    # self._ref_file = ref_file
     self._dev_src = dev_src
     self._dev_trg = dev_trg
     self._acc_log = acc_log
-    # self._trg_vocab_file = trg_vocab_file
-    # trg_rvocab = dict([(i,w.strip()) for i,w in enumerate(open(self._trg_vocab_file))])
     trg_rvocab = [w.strip() for w in open(trg_vocab_file)]
     self._trg_vocab = trg_rvocab
     self.devsrcs = [line.strip() for line in open(dev_src, "r", encoding='utf-8', errors='ignore').readlines()]
@@ -126,62 +104,35 @@ class SaveEvaluationPredictionHook(tf.train.SessionRunHook):
     self._features = tf.get_collection("features")
     self._labels = tf.get_collection("labels")
     if use_user_lang_map: self._contexts = tf.get_collection("contexts")
-    # if use_script_embedding or use_word_embedding: self._contexts = tf.get_collection("contexts")
-    # if use_word_script_embedding: self._contexts1, self._contexts2 = tf.get_collection("contexts1"), tf.get_collection("contexts2")
-    # self._predict_label = get_dict_from_collection("predict_label")
-    # self._accuracy = get_dict_from_collection("accuracy")
     self._global_step = tf.train.get_global_step()
     self.start_time = time.mktime(time.localtime())
     self.count = 0
 
   def before_run(self, run_context):
     if use_user_lang_map: return tf.train.SessionRunArgs([self._predictions, self._global_step, self._features, self._labels, self._contexts])
-    # if use_script_embedding or use_word_embedding: return tf.train.SessionRunArgs([self._predictions, self._global_step, self._features, self._labels, self._contexts])
-    # elif use_word_script_embedding: return tf.train.SessionRunArgs([self._predictions, self._global_step, self._features, self._labels, self._contexts1, self._contexts2])
     else: return tf.train.SessionRunArgs([self._predictions, self._global_step, self._features, self._labels])
 
   def after_run(self, run_context, run_values):
     if use_user_lang_map:  predictions, current_step, features, labels, contexts = run_values.results
-    # if use_script_embedding or use_word_embedding: predictions, current_step, features, labels, contexts = run_values.results
-    # elif use_word_script_embedding: predictions, current_step, features, labels, contexts1, contexts2 = run_values.results
     else: predictions, current_step, features, labels = run_values.results
     self._output_path = "{}.{}".format(self._output_file, current_step)
-    # self._output_score = self._output_path + ".score"
-    # trg_rvocab = dict([(i,w.strip()) for i,w in enumerate(open(self._trg_vocab_file))])
-    #for _, __ in enumerate(predictions):
-    #    self.count += 1
-    #tf.logging.info("Evaluation speed "+str(end_time)+":"+str(self.count))
-    #return
 
     if self.count % 10000 == 0: tf.logging.info("eval sample:"+str(self.count))
     with open(self._output_path,'a') as output_file:
         for index, prediction in enumerate(extract_batches(predictions)):
             self.count += 1
             self.dev_index += 1
-            #label = predict_label['label']
             prob = prediction['predict_score']
             prob_index = np.argsort(prob)[::-1]
             prob_index_lang = [self._trg_vocab[item] for item in prob_index]
             prob_value = np.sort(prob)[::-1]
-            if supported_lang != None and prob_index_lang[0] not in supported_lang:
-                for pid, prob in zip(prob_index_lang, prob_value):
-                    if pid in supported_lang:
-                        prob_index_lang[2], prob_value[2] = prob_index_lang[1], prob_value[1]
-                        prob_index_lang[1], prob_value[1] = prob_index_lang[0], prob_value[0]
-                        prob_index_lang[0], prob_value[0] = pid, prob
-                        break
             prob_index_lang = prob_index_lang[:3]
             prob_value = prob_value[:3]
             prob_str = "\t".join(['%s\t%.2f'%(i,v*100) for i,v in zip(prob_index_lang, prob_value)])
             print(prob_str, file=output_file)
-
-            #print(index, len(features), features[0].shape)
-            #print(index, len(contexts), contexts[0].shape)
-            #print(index, len(labels), labels[0].shape)
+            
             if showinfos:
                 if use_user_lang_map: feature, context = features[0], contexts[0]
-                # if use_script_embedding or use_word_embedding: feature, context = features[0], contexts[0]
-                # elif use_word_script_embedding: feature, context1, context2 = features[0], contexts1[0], contexts2[0]
                 else: feature = features[0]
                 self.dev_index = self.dev_index % len(self.devsrcs)
                 devsrc, devtrg = self.devsrcs[self.dev_index], self.devtrgs[self.dev_index]
@@ -189,59 +140,28 @@ class SaveEvaluationPredictionHook(tf.train.SessionRunHook):
                     tf.logging.info("text:"+devsrc+" lang:"+devtrg)
                     tf.logging.info("features:"+" ".join([str(item) for item in feature[index]]))
                     if use_user_lang_map: tf.logging.info("context:"+" ".join([str(item) for item in context[index]]))
-                    # if use_script_embedding or use_word_embedding: tf.logging.info("context:"+" ".join([str(item) for item in context[index]]))
-                    # if use_word_script_embedding:
-                        # tf.logging.info("context:"+" ".join([str(item) for item in context1[index]]))
-                        # tf.logging.info("context:"+" ".join([str(item) for item in context2[index]]))
                     tf.logging.info("predict:"+prob_str)
-                ## label = predict_label['label']
-                #self.count += 1
-                #prob = prediction['predict_score']
-                #prob_index = np.argsort(prob)[::-1][:3]
-                #prob_value = np.sort(prob)[::-1][:3]
-                #prob_str = "\t".join(['%s\t%.2f'%(self._trg_vocab[i],v*100) for i,v in zip(prob_index, prob_value)])
-                ## print(str(self._trg_vocab[label])+"\t"+prob_str, file=output_file)
-                #print(prob_str, file=output_file)
-                ## print >> output_file, trg_rvocab[label] 
-                ## print(trg_rvocab[label], file=output_file)
 
   def end(self, session):
     _ = self.count    
     end_time = time.mktime(time.localtime())
     dur_sec = end_time - self.start_time
     tf.logging.info("Evaluation speed "+str((_+1)/dur_sec)+"e/s:"+str(dur_sec*1000/(_+1))+"ms/e")
-
     tf.logging.info("Evaluation predictions saved to %s", self._output_path)
-    #tf.logging.info("output_path: %s, ref_file: %s", self._output_path, self._ref_file)
-    # score = cal_acc(self._output_path, self._ref_file)
     score = cal_acc(self._output_path, self._dev_src, self._dev_trg, self._acc_log, self._trg_vocab)
     tf.logging.info("accuracy: %s", score[:5])
 
 def cvt(checkpoint_dir,output_dir):
-
     model_name = "NmtModel"
-    # if args.exp_name.startswith("textcnn"):
-    #     model_name = "TextCNNModel"
-    # elif args.exp_name.startswith("transformer"):
-    #     model_name = "NmtModel"
-    # elif args.exp_name.startswith("attcnn"):
-    #     model_name = "NmtModel"
-    # elif "transformer" in args.exp_name or "trans" in args.exp_name:
-    #     model_name = "NmtModel"
-    # else:
-    #     model_name = "TextCNNModel"
-
     with tf.Graph().as_default() as graph:
         with tf.Session(graph=graph) as sess:
             var_list = []
             var_sum = 0
             for var_name, var_shape in tf.contrib.framework.list_variables(checkpoint_dir):
-                #tf.logging.info("var_name: %s:%s", var_name, var_shape)
                 if 'ExponentialMovingAverage' in var_name or 'global_step' in var_name:
                     tf.logging.info("var_name: %s:%s", var_name, var_shape)
                     if 'ExponentialMovingAverage' in var_name: var_sum += reduce(lambda x,y:x*y, var_shape) 
                     var_value = tf.contrib.framework.load_variable(checkpoint_dir, var_name)
-                    # var_name = var_name.replace(model_name+'/'+model_name, model_name).replace('/ExponentialMovingAverage','')
                     var_name = var_name.replace('/'+model_name+'/', '/').replace('/'+model_name+'/', '/').replace('/ExponentialMovingAverage','')
                     if var_name == 'global_step':
                         step = str(var_value)
@@ -334,8 +254,6 @@ def main(_):
                         with tf.gfile.GFile(acc_log, 'r') as f:
                             bleu_lines = f.readlines()
                             for i in bleu_lines:
-                                # normal bleu log: steps\tbleu1\tbleu2...
-                                # if len(i.strip('\t').split('\t')) >= 2:
                                 normal_bleu_lines.append(i)
                     # add new steps first
                     normal_bleu_lines.append('%s\t' % iteration)
